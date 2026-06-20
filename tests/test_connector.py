@@ -5,60 +5,61 @@ from bson import ObjectId
 from pydantic import ConfigDict
 from pymongo import ASCENDING, DESCENDING
 
+import ant_mongo
 from ant_mongo import (
-    AsyncMongoConnector,
-    Entity,
-    IndexSpec,
+    AntConnector,
+    AntDoc,
+    AntIndex,
     OptimisticLockError,
     default_collection_name,
 )
 from tests.fakes import FakeAsyncDatabase
 
 
-class User(Entity):
+class User(AntDoc):
     email: str
     name: str
     status: str = "active"
 
-    mongo_collection: ClassVar[str] = "users"
-    mongo_indexes: ClassVar[Sequence[IndexSpec]] = (
-        IndexSpec([("email", ASCENDING)], unique=True, name="uniq_user_email"),
-        IndexSpec([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
+    ant_collection: ClassVar[str] = "users"
+    ant_indexes: ClassVar[Sequence[AntIndex]] = (
+        AntIndex([("email", ASCENDING)], unique=True, name="uniq_user_email"),
+        AntIndex([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
     )
 
 
-class Project(Entity):
+class Project(AntDoc):
     owner_id: ObjectId
     slug: str
     title: str
     archived: bool = False
 
-    mongo_indexes: ClassVar[Sequence[IndexSpec]] = (
-        IndexSpec([("owner_id", ASCENDING), ("slug", ASCENDING)], unique=True),
+    ant_indexes: ClassVar[Sequence[AntIndex]] = (
+        AntIndex([("owner_id", ASCENDING), ("slug", ASCENDING)], unique=True),
     )
 
 
-class ProjectInvite(Entity):
+class ProjectInvite(AntDoc):
     email: str
 
 
-class Company(Entity):
+class Company(AntDoc):
     name: str
 
 
-class Box(Entity):
+class Box(AntDoc):
     label: str
 
 
-class ApiKey(Entity):
+class ApiKey(AntDoc):
     id: str | None = None
     token: str
 
-    mongo_id_type: ClassVar[type[str]] = str
-    mongo_id_factory: ClassVar[Callable[[], Any] | None] = None
+    ant_id_type: ClassVar[type[str]] = str
+    ant_id_factory: ClassVar[Callable[[], Any] | None] = None
 
 
-class FlexibleEntity(Entity):
+class FlexibleDoc(AntDoc):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         validate_by_name=True,
@@ -76,8 +77,16 @@ def test_default_collection_names_are_pluralized() -> None:
     assert default_collection_name(Box) == "boxes"
 
 
+def test_old_public_names_are_not_exported() -> None:
+    assert not hasattr(ant_mongo, "AsyncMongoConnector")
+    assert not hasattr(ant_mongo, "Entity")
+    assert not hasattr(ant_mongo, "IndexSpec")
+    assert not hasattr(ant_mongo, "EntityMeta")
+    assert not hasattr(ant_mongo, "EntityRegistry")
+
+
 def test_registry_resolves_lazy_metadata() -> None:
-    db = AsyncMongoConnector(FakeAsyncDatabase())
+    db = AntConnector(FakeAsyncDatabase())
 
     user_meta = db.register(User)
     project_meta = db.registry.resolve(Project)
@@ -89,7 +98,7 @@ def test_registry_resolves_lazy_metadata() -> None:
 
 @pytest.mark.asyncio
 async def test_save_get_find_count_delete_round_trip() -> None:
-    db = AsyncMongoConnector(FakeAsyncDatabase())
+    db = AntConnector(FakeAsyncDatabase())
 
     user = await db.save(User(email="a@b.com", name="Alice"))
     await db.save(User(email="c@d.com", name="Cora", status="inactive"))
@@ -116,7 +125,7 @@ async def test_save_get_find_count_delete_round_trip() -> None:
 
 @pytest.mark.asyncio
 async def test_raw_filter_and_where_kwargs_merge() -> None:
-    db = AsyncMongoConnector(FakeAsyncDatabase())
+    db = AntConnector(FakeAsyncDatabase())
     await db.save(User(email="a@b.com", name="Alice"))
     await db.save(User(email="c@d.com", name="Cora", status="pending"))
 
@@ -132,7 +141,7 @@ async def test_raw_filter_and_where_kwargs_merge() -> None:
 
 @pytest.mark.asyncio
 async def test_update_uses_optimistic_version() -> None:
-    db = AsyncMongoConnector(FakeAsyncDatabase())
+    db = AntConnector(FakeAsyncDatabase())
     user = await db.save(User(email="a@b.com", name="Alice"))
 
     updated = await db.save(user.model_copy(update={"name": "Alice Cooper"}))
@@ -145,7 +154,7 @@ async def test_update_uses_optimistic_version() -> None:
 
 @pytest.mark.asyncio
 async def test_patch_updates_fields_and_increments_version() -> None:
-    db = AsyncMongoConnector(FakeAsyncDatabase())
+    db = AntConnector(FakeAsyncDatabase())
     user = await db.save(User(email="a@b.com", name="Alice"))
 
     patched = await db.patch(User, {"name": "Alice Cooper"}, id=user.id, expected_version=1)
@@ -158,7 +167,7 @@ async def test_patch_updates_fields_and_increments_version() -> None:
 
 @pytest.mark.asyncio
 async def test_update_one_delete_many_distinct_and_aggregate() -> None:
-    db = AsyncMongoConnector(FakeAsyncDatabase())
+    db = AntConnector(FakeAsyncDatabase())
     await db.save(User(email="a@b.com", name="Alice"))
     await db.save(User(email="c@d.com", name="Cora"))
 
@@ -176,7 +185,7 @@ async def test_update_one_delete_many_distinct_and_aggregate() -> None:
 
 @pytest.mark.asyncio
 async def test_custom_string_id_is_not_coerced_to_object_id() -> None:
-    db = AsyncMongoConnector(FakeAsyncDatabase())
+    db = AntConnector(FakeAsyncDatabase())
     hex_looking_id = "0123456789abcdef01234567"
 
     saved = await db.save(ApiKey(id=hex_looking_id, token="secret"))
@@ -189,8 +198,8 @@ async def test_custom_string_id_is_not_coerced_to_object_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ensure_indexes_uses_entity_metadata() -> None:
-    db = AsyncMongoConnector(FakeAsyncDatabase())
+async def test_ensure_indexes_uses_ant_metadata() -> None:
+    db = AntConnector(FakeAsyncDatabase())
 
     created = await db.ensure_indexes(User, Project)
 
@@ -200,12 +209,12 @@ async def test_ensure_indexes_uses_entity_metadata() -> None:
 
 @pytest.mark.asyncio
 async def test_extra_allow_preserves_unknown_fields_on_read() -> None:
-    db = AsyncMongoConnector(FakeAsyncDatabase())
-    collection = db.collection(FlexibleEntity)
+    db = AntConnector(FakeAsyncDatabase())
+    collection = db.collection(FlexibleDoc)
     raw_id = ObjectId()
     await collection.insert_one({"_id": raw_id, "name": "Loose", "unknown": 42})
 
-    found = await db.get(FlexibleEntity, raw_id)
+    found = await db.get(FlexibleDoc, raw_id)
 
     assert found is not None
     assert found.model_extra == {"unknown": 42}

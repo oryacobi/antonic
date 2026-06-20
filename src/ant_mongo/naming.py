@@ -17,5 +17,5 @@ def simple_plural(word: str) -> str:
     return word + "s"
 
 
-def default_collection_name(entity_type: Type[Any]) -> str:
-    return simple_plural(snake_case(entity_type.__name__))
+def default_collection_name(doc_type: Type[Any]) -> str:
+    return simple_plural(snake_case(doc_type.__name__))

@@ -1,27 +1,27 @@
-from ant_mongo.connector import AsyncMongoConnector
-from ant_mongo.entity import Entity, utcnow
+from ant_mongo.connector import AntConnector
+from ant_mongo.doc import AntDoc, utcnow
 from ant_mongo.errors import (
-    DuplicateEntityError,
-    EntityNotFoundError,
-    EntityNotRegisteredError,
-    InvalidEntityMetadataError,
+    AntDocNotFoundError,
+    AntDocNotRegisteredError,
+    DuplicateAntDocError,
+    InvalidAntDocMetadataError,
     OptimisticLockError,
     PersistenceError,
 )
-from ant_mongo.indexes import IndexSpec
+from ant_mongo.index import AntIndex
 from ant_mongo.naming import default_collection_name, simple_plural, snake_case
-from ant_mongo.registry import EntityMeta, EntityRegistry
+from ant_mongo.registry import AntDocMeta, AntDocRegistry
 
 __all__ = [
-    "AsyncMongoConnector",
-    "DuplicateEntityError",
-    "Entity",
-    "EntityMeta",
-    "EntityNotFoundError",
-    "EntityNotRegisteredError",
-    "EntityRegistry",
-    "IndexSpec",
-    "InvalidEntityMetadataError",
+    "AntConnector",
+    "AntDoc",
+    "AntDocMeta",
+    "AntDocNotFoundError",
+    "AntDocNotRegisteredError",
+    "AntDocRegistry",
+    "AntIndex",
+    "DuplicateAntDocError",
+    "InvalidAntDocMetadataError",
     "OptimisticLockError",
     "PersistenceError",
     "default_collection_name",

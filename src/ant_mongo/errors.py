@@ -2,19 +2,19 @@ class PersistenceError(Exception):
     """Base class for connector persistence errors."""
 
 
-class InvalidEntityMetadataError(PersistenceError):
-    """Raised when an entity class has invalid Mongo metadata."""
+class InvalidAntDocMetadataError(PersistenceError):
+    """Raised when an AntDoc class has invalid metadata."""
 
 
-class EntityNotRegisteredError(PersistenceError):
-    """Raised by strict registries when an entity type was not registered."""
+class AntDocNotRegisteredError(PersistenceError):
+    """Raised by strict registries when an AntDoc type was not registered."""
 
 
-class DuplicateEntityError(PersistenceError):
+class DuplicateAntDocError(PersistenceError):
     """Raised when MongoDB rejects a write because of a duplicate key."""
 
 
-class EntityNotFoundError(PersistenceError):
+class AntDocNotFoundError(PersistenceError):
     """Raised when an update/delete requires a document that does not exist."""
 
 

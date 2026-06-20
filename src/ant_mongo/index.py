@@ -5,7 +5,7 @@ from pymongo import IndexModel
 
 
 @dataclass(frozen=True)
-class IndexSpec:
+class AntIndex:
     keys: Sequence[tuple[str, Any]]
     name: str | None = None
     unique: bool = False
@@ -16,10 +16,10 @@ class IndexSpec:
 
     def __post_init__(self) -> None:
         if not self.keys:
-            raise ValueError("IndexSpec.keys must not be empty")
+            raise ValueError("AntIndex.keys must not be empty")
         for key in self.keys:
             if not isinstance(key, tuple) or len(key) != 2 or not isinstance(key[0], str):
-                raise ValueError("IndexSpec.keys must contain (field_name, direction) tuples")
+                raise ValueError("AntIndex.keys must contain (field_name, direction) tuples")
 
     def to_index_model(self) -> IndexModel:
         kwargs = dict(self.options)

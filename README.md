@@ -1,8 +1,8 @@
 # ant-mongo
 
-Small connector-centered MongoDB persistence for passive Pydantic v2 entities.
+Small connector-centered MongoDB persistence for Pydantic v2 AntDocs.
 
-Models describe data and local Mongo metadata. `AsyncMongoConnector` owns all
+AntDocs describe data and local persistence metadata. `AntConnector` owns all
 database behavior:
 
 ```python
@@ -11,35 +11,35 @@ from typing import ClassVar, Sequence
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
 
-from ant_mongo import AsyncMongoConnector, Entity, IndexSpec
+from ant_mongo import AntConnector, AntDoc, AntIndex
 
 
-class User(Entity):
+class User(AntDoc):
     email: str
     name: str
     status: str = "active"
 
-    mongo_collection: ClassVar[str] = "users"
-    mongo_indexes: ClassVar[Sequence[IndexSpec]] = (
-        IndexSpec([("email", ASCENDING)], unique=True, name="uniq_user_email"),
-        IndexSpec([("status", ASCENDING), ("created_at", DESCENDING)]),
+    ant_collection: ClassVar[str] = "users"
+    ant_indexes: ClassVar[Sequence[AntIndex]] = (
+        AntIndex([("email", ASCENDING)], unique=True, name="uniq_user_email"),
+        AntIndex([("status", ASCENDING), ("created_at", DESCENDING)]),
     )
 
 
-class Project(Entity):
+class Project(AntDoc):
     owner_id: ObjectId
     slug: str
     title: str
 
     # Collection defaults to "projects".
-    mongo_indexes: ClassVar[Sequence[IndexSpec]] = (
-        IndexSpec([("owner_id", ASCENDING), ("slug", ASCENDING)], unique=True),
+    ant_indexes: ClassVar[Sequence[AntIndex]] = (
+        AntIndex([("owner_id", ASCENDING), ("slug", ASCENDING)], unique=True),
     )
 
 
 async def main() -> None:
     client = AsyncMongoClient("mongodb://localhost:27017")
-    db = AsyncMongoConnector(client["app"])
+    db = AntConnector(client["app"])
 
     await db.ensure_indexes(User, Project)
 

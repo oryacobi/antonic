@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/ants-infrastructure-mark-clean-six-legs-v02.png" alt="Antonic ant infrastructure logo" width="220">
+</p>
+
 # antonic
 
 Backend-neutral persistence for Pydantic v2 AntDocs.

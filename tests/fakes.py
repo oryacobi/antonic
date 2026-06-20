@@ -164,9 +164,20 @@ class FakeAsyncCollection:
 
     def _matches(self, doc: Mapping[str, Any], filter: Mapping[str, Any]) -> bool:
         for key, expected in filter.items():
+            if key == "$and":
+                if not all(self._matches(doc, item) for item in expected):
+                    return False
+                continue
+            if key == "$or":
+                if not any(self._matches(doc, item) for item in expected):
+                    return False
+                continue
+
             actual = self._value_for(doc, key)
             if isinstance(expected, Mapping):
                 for operator, operand in expected.items():
+                    if operator == "$eq" and actual != operand:
+                        return False
                     if operator == "$in" and actual not in operand:
                         return False
                     if operator == "$nin" and actual in operand:

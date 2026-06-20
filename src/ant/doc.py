@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 from typing import Any, Callable, ClassVar, Sequence
+from uuid import UUID, uuid4
 
-from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
-from ant_mongo.index import AntIndex
+from ant.index import AntIndex
 
 
 def utcnow() -> datetime:
@@ -28,11 +28,11 @@ class AntDoc(BaseModel):
     ant_indexes: ClassVar[Sequence[AntIndex]] = ()
     ant_timestamps: ClassVar[bool] = True
     ant_optimistic_lock: ClassVar[bool] = True
-    ant_id_factory: ClassVar[Callable[[], Any] | None] = ObjectId
-    ant_id_type: ClassVar[type[Any] | None] = ObjectId
+    ant_id_factory: ClassVar[Callable[[], Any] | None] = uuid4
+    ant_id_type: ClassVar[type[Any] | None] = UUID
 
     @field_serializer("id", when_used="json")
     def serialize_id(self, value: Any) -> Any:
-        if isinstance(value, ObjectId):
+        if isinstance(value, UUID) or value.__class__.__name__ == "ObjectId":
             return str(value)
         return value

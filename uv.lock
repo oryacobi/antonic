@@ -12,16 +12,21 @@ wheels = [
 ]
 
 [[package]]
-name = "ant-mongo"
+name = "ant"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+mongo = [
     { name = "pymongo" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "pymongo" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
@@ -29,11 +34,13 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = ">=2.11" },
-    { name = "pymongo", specifier = ">=4.11" },
+    { name = "pymongo", marker = "extra == 'mongo'", specifier = ">=4.11" },
 ]
+provides-extras = ["mongo"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pymongo", specifier = ">=4.11" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
 ]

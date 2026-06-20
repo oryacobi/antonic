@@ -1,17 +1,17 @@
-# ant-mongo
+# ant
 
-Small connector-centered MongoDB persistence for Pydantic v2 AntDocs.
+Small connector-centered persistence for Pydantic v2 AntDocs.
 
-AntDocs describe data and local persistence metadata. `AntConnector` owns all
-database behavior:
+AntDocs describe data and local persistence metadata. `AntConnector` owns
+document behavior, while a backend owns storage-specific translation:
 
 ```python
 from typing import ClassVar, Sequence
 
-from bson import ObjectId
-from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
+from pymongo import AsyncMongoClient
 
-from ant_mongo import AntConnector, AntDoc, AntIndex
+from ant import ASCENDING, DESCENDING, AntConnector, AntDoc, AntIndex
+from ant.backends.mongo import MongoBackend
 
 
 class User(AntDoc):
@@ -27,7 +27,7 @@ class User(AntDoc):
 
 
 class Project(AntDoc):
-    owner_id: ObjectId
+    owner_id: str
     slug: str
     title: str
 
@@ -39,7 +39,7 @@ class Project(AntDoc):
 
 async def main() -> None:
     client = AsyncMongoClient("mongodb://localhost:27017")
-    db = AntConnector(client["app"])
+    db = AntConnector(MongoBackend(client["app"]))
 
     await db.ensure_indexes(User, Project)
 
@@ -51,12 +51,22 @@ async def main() -> None:
     await db.delete(user)
 
     raw_users = db.collection(User)
-    await raw_users.find_one({"email": "a@b.com"}, max_time_ms=100)
+    await raw_users.find_one({"email": "a@b.com"})
 ```
 
-`filter={...}` accepts raw Mongo filters. Extra keyword arguments are equality
-filters, so use `filter={"limit": 10}` for document fields that collide with
-connector options.
+`filter={...}` accepts Ant's Mongo-like query DSL. Extra keyword arguments are
+equality filters, so use `filter={"limit": 10}` for document fields that collide
+with connector options.
+
+`AntDoc` uses UUID ids by default. MongoDB ObjectId users can opt in:
+
+```python
+from ant.backends.mongo import MongoObjectIdDoc
+
+
+class LegacyUser(MongoObjectIdDoc):
+    email: str
+```
 
 ## License
 

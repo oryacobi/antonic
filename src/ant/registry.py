@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Sequence, Type
 
-from ant_mongo.doc import AntDoc
-from ant_mongo.errors import AntDocNotRegisteredError, InvalidAntDocMetadataError
-from ant_mongo.index import AntIndex
-from ant_mongo.naming import CollectionNamingStrategy, default_collection_name
+from ant.doc import AntDoc
+from ant.errors import AntDocNotRegisteredError, InvalidAntDocMetadataError
+from ant.index import AntIndex
+from ant.naming import CollectionNamingStrategy, default_collection_name
 
 
 @dataclass(frozen=True)

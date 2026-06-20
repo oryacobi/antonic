@@ -1,5 +1,5 @@
 class PersistenceError(Exception):
-    """Base class for connector persistence errors."""
+    """Base class for Ant persistence errors."""
 
 
 class InvalidAntDocMetadataError(PersistenceError):
@@ -11,7 +11,7 @@ class AntDocNotRegisteredError(PersistenceError):
 
 
 class DuplicateAntDocError(PersistenceError):
-    """Raised when MongoDB rejects a write because of a duplicate key."""
+    """Raised when a backend rejects a write because of a duplicate key."""
 
 
 class AntDocNotFoundError(PersistenceError):
@@ -20,3 +20,11 @@ class AntDocNotFoundError(PersistenceError):
 
 class OptimisticLockError(PersistenceError):
     """Raised when optimistic version checks fail."""
+
+
+class InvalidAntQueryError(PersistenceError):
+    """Raised when an Ant filter/update uses unsupported syntax."""
+
+
+class UnsupportedAntCapabilityError(PersistenceError):
+    """Raised when a backend does not support an optional Ant capability."""

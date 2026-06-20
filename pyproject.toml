@@ -3,19 +3,24 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ant-mongo"
+name = "ant"
 version = "0.1.0"
-description = "Connector-centered MongoDB persistence for Pydantic AntDocs."
+description = "Connector-centered persistence for Pydantic AntDocs with a Mongo-like query DSL."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.11",
+]
+
+[project.optional-dependencies]
+mongo = [
     "pymongo>=4.11",
 ]
 
 [dependency-groups]
 dev = [
+    "pymongo>=4.11",
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
 ]
@@ -25,4 +30,4 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ant_mongo"]
+packages = ["src/ant"]

@@ -1,18 +1,27 @@
+import importlib
+from pathlib import Path
 from typing import Any, Callable, ClassVar, Sequence
+from uuid import UUID, uuid4
 
 import pytest
 from bson import ObjectId
 from pydantic import ConfigDict
-from pymongo import ASCENDING, DESCENDING
 
-import ant_mongo
-from ant_mongo import (
+import ant
+from ant import (
+    ASCENDING,
+    DESCENDING,
     AntConnector,
     AntDoc,
     AntIndex,
+    DeleteResult,
+    InvalidAntQueryError,
     OptimisticLockError,
+    UnsupportedAntCapabilityError,
+    UpdateResult,
     default_collection_name,
 )
+from ant.backends.mongo import MongoBackend, MongoObjectIdDoc
 from tests.fakes import FakeAsyncDatabase
 
 
@@ -29,7 +38,7 @@ class User(AntDoc):
 
 
 class Project(AntDoc):
-    owner_id: ObjectId
+    owner_id: UUID
     slug: str
     title: str
     archived: bool = False
@@ -59,6 +68,12 @@ class ApiKey(AntDoc):
     ant_id_factory: ClassVar[Callable[[], Any] | None] = None
 
 
+class ObjectIdUser(MongoObjectIdDoc):
+    email: str
+
+    ant_collection: ClassVar[str] = "object_id_users"
+
+
 class FlexibleDoc(AntDoc):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -70,6 +85,10 @@ class FlexibleDoc(AntDoc):
     name: str
 
 
+def mongo_db() -> AntConnector:
+    return AntConnector(MongoBackend(FakeAsyncDatabase()))
+
+
 def test_default_collection_names_are_pluralized() -> None:
     assert default_collection_name(User) == "users"
     assert default_collection_name(ProjectInvite) == "project_invites"
@@ -77,16 +96,29 @@ def test_default_collection_names_are_pluralized() -> None:
     assert default_collection_name(Box) == "boxes"
 
 
-def test_old_public_names_are_not_exported() -> None:
-    assert not hasattr(ant_mongo, "AsyncMongoConnector")
-    assert not hasattr(ant_mongo, "Entity")
-    assert not hasattr(ant_mongo, "IndexSpec")
-    assert not hasattr(ant_mongo, "EntityMeta")
-    assert not hasattr(ant_mongo, "EntityRegistry")
+def test_old_package_and_public_names_are_not_available() -> None:
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("ant_mongo")
+
+    assert not hasattr(ant, "AsyncMongoConnector")
+    assert not hasattr(ant, "Entity")
+    assert not hasattr(ant, "IndexSpec")
+    assert not hasattr(ant, "EntityMeta")
+    assert not hasattr(ant, "EntityRegistry")
+
+
+def test_core_source_does_not_import_mongo_packages() -> None:
+    core_root = Path(__file__).parents[1] / "src" / "ant"
+    for path in core_root.glob("*.py"):
+        text = path.read_text()
+        assert "from pymongo" not in text
+        assert "import pymongo" not in text
+        assert "from bson" not in text
+        assert "import bson" not in text
 
 
 def test_registry_resolves_lazy_metadata() -> None:
-    db = AntConnector(FakeAsyncDatabase())
+    db = mongo_db()
 
     user_meta = db.register(User)
     project_meta = db.registry.resolve(Project)
@@ -98,15 +130,15 @@ def test_registry_resolves_lazy_metadata() -> None:
 
 @pytest.mark.asyncio
 async def test_save_get_find_count_delete_round_trip() -> None:
-    db = AntConnector(FakeAsyncDatabase())
+    db = mongo_db()
 
     user = await db.save(User(email="a@b.com", name="Alice"))
     await db.save(User(email="c@d.com", name="Cora", status="inactive"))
 
-    raw_doc = db.collection(User).documents[user.id]
+    raw_doc = db.collection(User).documents[str(user.id)]
     assert "id" not in raw_doc
-    assert raw_doc["_id"] == user.id
-    assert isinstance(user.id, ObjectId)
+    assert raw_doc["_id"] == str(user.id)
+    assert isinstance(user.id, UUID)
     assert user.version == 1
     assert user.created_at is not None
     assert user.updated_at is not None
@@ -114,7 +146,7 @@ async def test_save_get_find_count_delete_round_trip() -> None:
     found = await db.get(User, str(user.id))
     assert found == user
 
-    active = await db.find(User, status="active", sort=[("created_at", -1)], limit=25)
+    active = await db.find(User, status="active", sort=[("created_at", DESCENDING)], limit=25)
     assert [item.email for item in active] == ["a@b.com"]
     assert db.collection(User).last_find_options["limit"] == 25
 
@@ -125,13 +157,13 @@ async def test_save_get_find_count_delete_round_trip() -> None:
 
 @pytest.mark.asyncio
 async def test_raw_filter_and_where_kwargs_merge() -> None:
-    db = AntConnector(FakeAsyncDatabase())
+    db = mongo_db()
     await db.save(User(email="a@b.com", name="Alice"))
     await db.save(User(email="c@d.com", name="Cora", status="pending"))
 
     users = await db.find(
         User,
-        {"status": {"$in": ["active", "pending"]}},
+        {"$and": [{"status": {"$in": ["active", "pending"]}}, {"name": {"$ne": "Alice"}}]},
         email="c@d.com",
     )
 
@@ -141,7 +173,7 @@ async def test_raw_filter_and_where_kwargs_merge() -> None:
 
 @pytest.mark.asyncio
 async def test_update_uses_optimistic_version() -> None:
-    db = AntConnector(FakeAsyncDatabase())
+    db = mongo_db()
     user = await db.save(User(email="a@b.com", name="Alice"))
 
     updated = await db.save(user.model_copy(update={"name": "Alice Cooper"}))
@@ -154,7 +186,7 @@ async def test_update_uses_optimistic_version() -> None:
 
 @pytest.mark.asyncio
 async def test_patch_updates_fields_and_increments_version() -> None:
-    db = AntConnector(FakeAsyncDatabase())
+    db = mongo_db()
     user = await db.save(User(email="a@b.com", name="Alice"))
 
     patched = await db.patch(User, {"name": "Alice Cooper"}, id=user.id, expected_version=1)
@@ -167,25 +199,47 @@ async def test_patch_updates_fields_and_increments_version() -> None:
 
 @pytest.mark.asyncio
 async def test_update_one_delete_many_distinct_and_aggregate() -> None:
-    db = AntConnector(FakeAsyncDatabase())
-    await db.save(User(email="a@b.com", name="Alice"))
+    db = mongo_db()
+    first = await db.save(User(email="a@b.com", name="Alice"))
     await db.save(User(email="c@d.com", name="Cora"))
 
     result = await db.update_one(User, {"$set": {"status": "disabled"}}, email="a@b.com")
+    assert isinstance(result, UpdateResult)
     assert result.matched_count == 1
     assert await db.distinct(User, "status") == ["disabled", "active"]
+    assert await db.distinct(User, "id", email="a@b.com") == [first.id]
 
     rows = await db.aggregate(User, [{"$match": {"status": "disabled"}}])
     assert rows[0]["email"] == "a@b.com"
+    assert rows[0]["id"] == first.id
 
     deleted = await db.delete_many(User, status="active")
+    assert isinstance(deleted, DeleteResult)
     assert deleted.deleted_count == 1
     assert await db.count(User) == 1
 
 
 @pytest.mark.asyncio
+async def test_upsert_result_ids_are_ant_ids() -> None:
+    db = mongo_db()
+    new_id = uuid4()
+
+    result = await db.update_one(
+        User,
+        {"$set": {"email": "new@b.com", "name": "New"}},
+        id=new_id,
+        upsert=True,
+    )
+    found = await db.get(User, new_id)
+
+    assert result.upserted_id == new_id
+    assert found is not None
+    assert found.id == new_id
+
+
+@pytest.mark.asyncio
 async def test_custom_string_id_is_not_coerced_to_object_id() -> None:
-    db = AntConnector(FakeAsyncDatabase())
+    db = mongo_db()
     hex_looking_id = "0123456789abcdef01234567"
 
     saved = await db.save(ApiKey(id=hex_looking_id, token="secret"))
@@ -198,8 +252,20 @@ async def test_custom_string_id_is_not_coerced_to_object_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mongo_object_id_doc_opts_into_object_ids() -> None:
+    db = mongo_db()
+
+    saved = await db.save(ObjectIdUser(email="a@b.com"))
+    found = await db.get(ObjectIdUser, str(saved.id))
+
+    assert isinstance(saved.id, ObjectId)
+    assert db.collection(ObjectIdUser).documents[saved.id]["_id"] == saved.id
+    assert found == saved
+
+
+@pytest.mark.asyncio
 async def test_ensure_indexes_uses_ant_metadata() -> None:
-    db = AntConnector(FakeAsyncDatabase())
+    db = mongo_db()
 
     created = await db.ensure_indexes(User, Project)
 
@@ -209,12 +275,54 @@ async def test_ensure_indexes_uses_ant_metadata() -> None:
 
 @pytest.mark.asyncio
 async def test_extra_allow_preserves_unknown_fields_on_read() -> None:
-    db = AntConnector(FakeAsyncDatabase())
+    db = mongo_db()
     collection = db.collection(FlexibleDoc)
-    raw_id = ObjectId()
+    raw_id = str(uuid4())
     await collection.insert_one({"_id": raw_id, "name": "Loose", "unknown": 42})
 
-    found = await db.get(FlexibleDoc, raw_id)
+    found = await db.get(FlexibleDoc, UUID(raw_id))
 
     assert found is not None
+    assert found.id == UUID(raw_id)
     assert found.model_extra == {"unknown": 42}
+
+
+@pytest.mark.asyncio
+async def test_query_validation_rejects_private_id_and_unsupported_operators() -> None:
+    db = mongo_db()
+
+    with pytest.raises(InvalidAntQueryError):
+        await db.find(User, {"_id": "not-public"})
+    with pytest.raises(InvalidAntQueryError):
+        await db.find(User, {"email": {"$regex": "@b.com"}})
+    with pytest.raises(InvalidAntQueryError):
+        await db.find(User, {"$and": "not-a-list"})
+
+    assert await db.find(User, {"id": {"$exists": True}}) == []
+
+
+@pytest.mark.asyncio
+async def test_update_validation_rejects_private_id_and_unsupported_operators() -> None:
+    db = mongo_db()
+
+    with pytest.raises(InvalidAntQueryError):
+        await db.update_one(User, {"$rename": {"name": "full_name"}})
+    with pytest.raises(InvalidAntQueryError):
+        await db.update_one(User, {"$set": {"_id": "not-public"}})
+    with pytest.raises(InvalidAntQueryError):
+        await db.update_one(User, {"$set": {"id": "immutable"}})
+
+
+@pytest.mark.asyncio
+async def test_aggregate_is_optional_backend_capability() -> None:
+    class NoAggregateBackend:
+        def collection(self, meta: Any) -> Any:
+            raise AssertionError("collection should not be called")
+
+        def raw_collection(self, name: str) -> Any:
+            raise AssertionError("raw_collection should not be called")
+
+    db = AntConnector(NoAggregateBackend())
+
+    with pytest.raises(UnsupportedAntCapabilityError):
+        await db.aggregate(User, [])

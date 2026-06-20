@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any, Callable, ClassVar, Sequence
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
@@ -28,8 +28,8 @@ class AntDoc(BaseModel):
     ant_indexes: ClassVar[Sequence[AntIndex]] = ()
     ant_timestamps: ClassVar[bool] = True
     ant_optimistic_lock: ClassVar[bool] = True
-    ant_id_factory: ClassVar[Callable[[], Any] | None] = uuid4
-    ant_id_type: ClassVar[type[Any] | None] = UUID
+    ant_id_factory: ClassVar[Callable[[], Any] | None] = None
+    ant_id_type: ClassVar[type[Any] | None] = None
 
     @field_serializer("id", when_used="json")
     def serialize_id(self, value: Any) -> Any:

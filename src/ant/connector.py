@@ -77,7 +77,7 @@ class AntConnector:
             self._to_document(next_doc),
             backend_options=backend_options,
         )
-        if next_doc.id is None and stored.get("id") is not None:
+        if stored.get("id") is not None:
             next_doc = next_doc.model_copy(update={"id": stored["id"]})
         return next_doc
 

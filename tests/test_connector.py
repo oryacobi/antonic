@@ -21,7 +21,7 @@ from ant import (
     UpdateResult,
     default_collection_name,
 )
-from ant.backends.mongo import MongoBackend, MongoObjectIdDoc
+from ant.backends.mongo import MongoBackend
 from tests.fakes import FakeAsyncDatabase
 
 
@@ -68,7 +68,15 @@ class ApiKey(AntDoc):
     ant_id_factory: ClassVar[Callable[[], Any] | None] = None
 
 
-class ObjectIdUser(MongoObjectIdDoc):
+class UuidUser(AntDoc):
+    email: str
+
+    ant_collection: ClassVar[str] = "uuid_users"
+    ant_id_factory: ClassVar[Callable[[], Any] | None] = uuid4
+    ant_id_type: ClassVar[type[UUID]] = UUID
+
+
+class ObjectIdUser(AntDoc):
     email: str
 
     ant_collection: ClassVar[str] = "object_id_users"
@@ -135,10 +143,10 @@ async def test_save_get_find_count_delete_round_trip() -> None:
     user = await db.save(User(email="a@b.com", name="Alice"))
     await db.save(User(email="c@d.com", name="Cora", status="inactive"))
 
-    raw_doc = db.collection(User).documents[str(user.id)]
+    raw_doc = db.collection(User).documents[user.id]
     assert "id" not in raw_doc
-    assert raw_doc["_id"] == str(user.id)
-    assert isinstance(user.id, UUID)
+    assert raw_doc["_id"] == user.id
+    assert isinstance(user.id, ObjectId)
     assert user.version == 1
     assert user.created_at is not None
     assert user.updated_at is not None
@@ -222,19 +230,44 @@ async def test_update_one_delete_many_distinct_and_aggregate() -> None:
 @pytest.mark.asyncio
 async def test_upsert_result_ids_are_ant_ids() -> None:
     db = mongo_db()
-    new_id = uuid4()
+    new_id = ObjectId()
 
     result = await db.update_one(
         User,
         {"$set": {"email": "new@b.com", "name": "New"}},
-        id=new_id,
+        id=str(new_id),
         upsert=True,
     )
-    found = await db.get(User, new_id)
+    found = await db.get(User, str(new_id))
 
     assert result.upserted_id == new_id
     assert found is not None
     assert found.id == new_id
+
+
+@pytest.mark.asyncio
+async def test_explicit_uuid_ids_round_trip() -> None:
+    db = mongo_db()
+
+    saved = await db.save(UuidUser(email="a@b.com"))
+    found = await db.get(UuidUser, str(saved.id))
+
+    assert isinstance(saved.id, UUID)
+    assert db.collection(UuidUser).documents[str(saved.id)]["_id"] == str(saved.id)
+    assert found == saved
+
+    new_id = uuid4()
+    result = await db.update_one(
+        UuidUser,
+        {"$set": {"email": "new@b.com"}},
+        id=new_id,
+        upsert=True,
+    )
+    upserted = await db.get(UuidUser, str(new_id))
+
+    assert result.upserted_id == new_id
+    assert upserted is not None
+    assert upserted.id == new_id
 
 
 @pytest.mark.asyncio
@@ -252,7 +285,7 @@ async def test_custom_string_id_is_not_coerced_to_object_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mongo_object_id_doc_opts_into_object_ids() -> None:
+async def test_plain_ant_doc_uses_object_ids_with_mongo_backend() -> None:
     db = mongo_db()
 
     saved = await db.save(ObjectIdUser(email="a@b.com"))
@@ -261,6 +294,12 @@ async def test_mongo_object_id_doc_opts_into_object_ids() -> None:
     assert isinstance(saved.id, ObjectId)
     assert db.collection(ObjectIdUser).documents[saved.id]["_id"] == saved.id
     assert found == saved
+
+    explicit_id = ObjectId()
+    explicit = await db.save(ObjectIdUser(id=str(explicit_id), email="c@d.com"))
+
+    assert explicit.id == explicit_id
+    assert db.collection(ObjectIdUser).documents[explicit_id]["_id"] == explicit_id
 
 
 @pytest.mark.asyncio
@@ -277,13 +316,13 @@ async def test_ensure_indexes_uses_ant_metadata() -> None:
 async def test_extra_allow_preserves_unknown_fields_on_read() -> None:
     db = mongo_db()
     collection = db.collection(FlexibleDoc)
-    raw_id = str(uuid4())
+    raw_id = ObjectId()
     await collection.insert_one({"_id": raw_id, "name": "Loose", "unknown": 42})
 
-    found = await db.get(FlexibleDoc, UUID(raw_id))
+    found = await db.get(FlexibleDoc, str(raw_id))
 
     assert found is not None
-    assert found.id == UUID(raw_id)
+    assert found.id == raw_id
     assert found.model_extra == {"unknown": 42}
 
 

@@ -1,21 +1,15 @@
-from typing import Any, AsyncIterator, ClassVar, Mapping, Sequence
+from typing import Any, AsyncIterator, Mapping, Sequence
 from uuid import UUID
 
 from bson import ObjectId
 from pymongo import IndexModel, ReturnDocument
 from pymongo.errors import DuplicateKeyError as PyMongoDuplicateKeyError
 
-from ant.doc import AntDoc
 from ant.errors import DuplicateAntDocError
 from ant.index import AntIndex
 from ant.query import validate_query
 from ant.registry import AntDocMeta
 from ant.results import DeleteResult, UpdateResult
-
-
-class MongoObjectIdDoc(AntDoc):
-    ant_id_factory: ClassVar[Any] = ObjectId
-    ant_id_type: ClassVar[type[Any] | None] = ObjectId
 
 
 class MongoBackend:
@@ -44,7 +38,7 @@ class MongoBackend:
         except PyMongoDuplicateKeyError as exc:
             raise DuplicateAntDocError(str(exc)) from exc
 
-        if stored.get("id") is None and getattr(result, "inserted_id", None) is not None:
+        if getattr(result, "inserted_id", None) is not None:
             stored["id"] = self._from_mongo_id(meta, result.inserted_id)
         return stored
 
@@ -315,7 +309,7 @@ class MongoBackend:
             return str(value)
         if meta.id_type is UUID:
             return value
-        if meta.id_type is ObjectId and isinstance(value, str) and ObjectId.is_valid(value):
+        if meta.id_type in {None, ObjectId} and isinstance(value, str) and ObjectId.is_valid(value):
             return ObjectId(value)
         return value
 

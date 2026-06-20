@@ -58,15 +58,9 @@ async def main() -> None:
 equality filters, so use `filter={"limit": 10}` for document fields that collide
 with connector options.
 
-`AntDoc` uses UUID ids by default. MongoDB ObjectId users can opt in:
-
-```python
-from ant.backends.mongo import MongoObjectIdDoc
-
-
-class LegacyUser(MongoObjectIdDoc):
-    email: str
-```
+With `MongoBackend`, plain `AntDoc` ids default to MongoDB `ObjectId`
+values. You can pass either an `ObjectId` or its string form to connector
+methods that filter by `id`.
 
 ## License
 

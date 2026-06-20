@@ -3,15 +3,36 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ant"
+name = "antonic"
 version = "0.1.0"
-description = "Connector-centered persistence for Pydantic AntDocs with a Mongo-like query DSL."
+description = "Backend-neutral persistence for Pydantic AntDocs with a Mongo-like query DSL."
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
+authors = [
+    { name = "antonic contributors" },
+]
+keywords = ["async", "documents", "mongodb", "persistence", "pydantic", "repository"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database",
+    "Typing :: Typed",
+]
 dependencies = [
     "pydantic>=2.11",
 ]
+
+[project.urls]
+Repository = "https://github.com/oryacobi/antonic"
+Issues = "https://github.com/oryacobi/antonic/issues"
 
 [project.optional-dependencies]
 mongo = [
@@ -23,11 +44,22 @@ dev = [
     "pymongo>=4.11",
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "twine>=6.0",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/CHANGELOG.md",
+    "/LICENSE",
+    "/README.md",
+    "/pyproject.toml",
+    "/src/antonic",
+    "/tests",
+]
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/ant"]
+packages = ["src/antonic"]

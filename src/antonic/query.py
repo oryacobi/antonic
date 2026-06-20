@@ -1,6 +1,6 @@
 from typing import Any, Mapping, Sequence
 
-from ant.errors import InvalidAntQueryError
+from antonic.errors import InvalidAntQueryError
 
 SUPPORTED_FIELD_OPERATORS = {"$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte", "$exists"}
 SUPPORTED_LOGICAL_OPERATORS = {"$and", "$or"}

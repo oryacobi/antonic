@@ -1,12 +1,12 @@
 from typing import Any, AsyncIterator, Mapping, Sequence, Type, TypeVar, overload
 
-from ant.backend import AntBackend
-from ant.doc import AntDoc, utcnow
-from ant.errors import AntDocNotFoundError, InvalidAntQueryError, OptimisticLockError, UnsupportedAntCapabilityError
-from ant.naming import CollectionNamingStrategy, default_collection_name
-from ant.query import validate_projection, validate_query, validate_sort, validate_update
-from ant.registry import AntDocMeta, AntDocRegistry
-from ant.results import DeleteResult, UpdateResult
+from antonic.backend import AntBackend
+from antonic.doc import AntDoc, utcnow
+from antonic.errors import AntDocNotFoundError, InvalidAntQueryError, OptimisticLockError, UnsupportedAntCapabilityError
+from antonic.naming import CollectionNamingStrategy, default_collection_name
+from antonic.query import validate_projection, validate_query, validate_sort, validate_update
+from antonic.registry import AntDocMeta, AntDocRegistry
+from antonic.results import DeleteResult, UpdateResult
 
 T = TypeVar("T", bound=AntDoc)
 

@@ -1,6 +1,22 @@
-# ant
+# antonic
 
-Small connector-centered persistence for Pydantic v2 AntDocs.
+Backend-neutral persistence for Pydantic v2 AntDocs.
+
+Antonic is in `0.1.x` alpha. The public package is named `antonic`, while the
+core model and metadata classes keep the Ant vocabulary: `AntDoc`,
+`AntConnector`, `AntIndex`, `ant_collection`, and `ant_indexes`.
+
+## Install
+
+```bash
+pip install antonic
+```
+
+Install the MongoDB backend extra when using `MongoBackend`:
+
+```bash
+pip install "antonic[mongo]"
+```
 
 AntDocs describe data and local persistence metadata. `AntConnector` owns
 document behavior, while a backend owns storage-specific translation:
@@ -10,8 +26,8 @@ from typing import ClassVar, Sequence
 
 from pymongo import AsyncMongoClient
 
-from ant import ASCENDING, DESCENDING, AntConnector, AntDoc, AntIndex
-from ant.backends.mongo import MongoBackend
+from antonic import ASCENDING, DESCENDING, AntConnector, AntDoc, AntIndex
+from antonic.backends.mongo import MongoBackend
 
 
 class User(AntDoc):
@@ -61,6 +77,8 @@ with connector options.
 With `MongoBackend`, plain `AntDoc` ids default to MongoDB `ObjectId`
 values. You can pass either an `ObjectId` or its string form to connector
 methods that filter by `id`.
+
+Antonic requires Python 3.12 or newer.
 
 ## License
 

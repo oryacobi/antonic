@@ -5,11 +5,11 @@ from bson import ObjectId
 from pymongo import IndexModel, ReturnDocument
 from pymongo.errors import DuplicateKeyError as PyMongoDuplicateKeyError
 
-from ant.errors import DuplicateAntDocError
-from ant.index import AntIndex
-from ant.query import validate_query
-from ant.registry import AntDocMeta
-from ant.results import DeleteResult, UpdateResult
+from antonic.errors import DuplicateAntDocError
+from antonic.index import AntIndex
+from antonic.query import validate_query
+from antonic.registry import AntDocMeta
+from antonic.results import DeleteResult, UpdateResult
 
 
 class MongoBackend:

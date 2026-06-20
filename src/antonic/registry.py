@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Sequence, Type
 
-from ant.doc import AntDoc
-from ant.errors import AntDocNotRegisteredError, InvalidAntDocMetadataError
-from ant.index import AntIndex
-from ant.naming import CollectionNamingStrategy, default_collection_name
+from antonic.doc import AntDoc
+from antonic.errors import AntDocNotRegisteredError, InvalidAntDocMetadataError
+from antonic.index import AntIndex
+from antonic.naming import CollectionNamingStrategy, default_collection_name
 
 
 @dataclass(frozen=True)

@@ -1,8 +1,8 @@
 from typing import Any, AsyncIterator, Mapping, Protocol, Sequence
 
-from ant.index import AntIndex
-from ant.registry import AntDocMeta
-from ant.results import DeleteResult, UpdateResult
+from antonic.index import AntIndex
+from antonic.registry import AntDocMeta
+from antonic.results import DeleteResult, UpdateResult
 
 
 class AntBackend(Protocol):

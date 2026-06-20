@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
-from ant.index import AntIndex
+from antonic.index import AntIndex
 
 
 def utcnow() -> datetime:

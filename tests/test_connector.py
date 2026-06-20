@@ -7,8 +7,8 @@ import pytest
 from bson import ObjectId
 from pydantic import ConfigDict
 
-import ant
-from ant import (
+import antonic
+from antonic import (
     ASCENDING,
     DESCENDING,
     AntConnector,
@@ -21,7 +21,7 @@ from ant import (
     UpdateResult,
     default_collection_name,
 )
-from ant.backends.mongo import MongoBackend
+from antonic.backends.mongo import MongoBackend
 from tests.fakes import FakeAsyncDatabase
 
 
@@ -106,17 +106,19 @@ def test_default_collection_names_are_pluralized() -> None:
 
 def test_old_package_and_public_names_are_not_available() -> None:
     with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("ant")
+    with pytest.raises(ModuleNotFoundError):
         importlib.import_module("ant_mongo")
 
-    assert not hasattr(ant, "AsyncMongoConnector")
-    assert not hasattr(ant, "Entity")
-    assert not hasattr(ant, "IndexSpec")
-    assert not hasattr(ant, "EntityMeta")
-    assert not hasattr(ant, "EntityRegistry")
+    assert not hasattr(antonic, "AsyncMongoConnector")
+    assert not hasattr(antonic, "Entity")
+    assert not hasattr(antonic, "IndexSpec")
+    assert not hasattr(antonic, "EntityMeta")
+    assert not hasattr(antonic, "EntityRegistry")
 
 
 def test_core_source_does_not_import_mongo_packages() -> None:
-    core_root = Path(__file__).parents[1] / "src" / "ant"
+    core_root = Path(__file__).parents[1] / "src" / "antonic"
     for path in core_root.glob("*.py"):
         text = path.read_text()
         assert "from pymongo" not in text

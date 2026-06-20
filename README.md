@@ -57,3 +57,7 @@ async def main() -> None:
 `filter={...}` accepts raw Mongo filters. Extra keyword arguments are equality
 filters, so use `filter={"limit": 10}` for document fields that collide with
 connector options.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).
